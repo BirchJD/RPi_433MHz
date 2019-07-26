@@ -64,6 +64,7 @@ DATA_PERIOD = 3
 
 class RxPacket:
    StartBitCount = RX_START_BITS
+   AltStartBitCount = RX_START_BITS
    DataCount = 0
    Data = []
    BitPeriod = 0
@@ -75,6 +76,7 @@ class RxPacket:
 # Initialise application data.
 def DataInit(ThisRxPacket):
    ThisRxPacket.StartBitCount = RX_START_BITS
+   ThisRxPacket.AltStartBitCount = RX_START_BITS
    ThisRxPacket.DataCount = 0
    ThisRxPacket.Data = []
    ThisRxPacket.BitPeriod = 0
@@ -157,8 +159,11 @@ while ExitFlag == False:
          # Display binary data and store groups of eight bits as byte data for use later.
          LogEntry += "\nBINARY DATA:\n"
          BitDataCount = 0
+         AltBitDataCount = 0
          ByteDataCount = 0
+         AltByteDataCount = 0
          ByteData = []
+         AltByteData = []
          if RX_BIT_INVERT == 0:
             LevelTest = 0
          else:
@@ -167,7 +172,8 @@ while ExitFlag == False:
             if DataRow[DATA_PERIOD] < RX_END_PERIOD:
                if DataRow[DATA_LEVEL] == LevelTest:
                   # Divide the data level period by the min period for the data level to calculate how many bits are of that level.
-                  for Count in range(int(round(DataRow[DATA_PERIOD] / MinLowPeriod))):
+                  BitCount = int(round(DataRow[DATA_PERIOD] / MinLowPeriod))
+                  for Count in range(BitCount):
                      if ThisRxPacket.StartBitCount > 0:
                         ThisRxPacket.StartBitCount -= 1
                      else:
@@ -179,7 +185,8 @@ while ExitFlag == False:
                         ByteData[ByteDataCount - 1] = (ByteData[ByteDataCount - 1] << 1) + 0
                else:
                   # Divide the data level period by the min period for the data level to calculate how many bits are of that level.
-                  for Count in range(int(round(DataRow[DATA_PERIOD] / MinHighPeriod))):
+                  BitCount = int(round(DataRow[DATA_PERIOD] / MinHighPeriod))
+                  for Count in range(BitCount):
                      if ThisRxPacket.StartBitCount > 0:
                         ThisRxPacket.StartBitCount -= 1
                      else:
@@ -190,13 +197,40 @@ while ExitFlag == False:
                         LogEntry += "1"
                         ByteData[ByteDataCount - 1] = (ByteData[ByteDataCount - 1] << 1) + 1
 
+               if BitCount <= 2:
+                  if ThisRxPacket.AltStartBitCount > 0:
+                     ThisRxPacket.AltStartBitCount -= 1
+                  else:
+                     if AltBitDataCount % 8 == 0:
+                        AltByteData.append(0)
+                        AltByteDataCount += 1
+                     AltBitDataCount += 1
+                     if BitCount == 1:
+                        AltByteData[AltByteDataCount - 1] = (AltByteData[AltByteDataCount - 1] << 1) + 0
+                     elif BitCount == 2:
+                        AltByteData[AltByteDataCount - 1] = (AltByteData[AltByteDataCount - 1] << 1) + 1
+
          # Display the byte data in hex format.
          LogEntry += "\n\nHEX DATA:\n"
+         DataCount = 0
+         ZeroTest = 0
+         for Byte in ByteData:
+            ZeroTest = (ZeroTest | Byte)
+            LogEntry += "{:02X} ".format(Byte)
+            DataCount += 1
+            if DataCount % 26 == 0:
+               LogEntry += "\n"
+         # Flag all zero data as bad data.
+         if ZeroTest == 0:
+            BadDataFlag = True
+
+         # Received data decoded from single bit run = 0, double bit run = 1.
+         LogEntry += "\n\nALT HEX DATA:\n"
          RxSignatureCount = RX_SIGNATURE_SIZE
          RxSignature = ""
          DataCount = 0
          ZeroTest = 0
-         for Byte in ByteData:
+         for Byte in AltByteData:
             ZeroTest = (ZeroTest | Byte)
             LogEntry += "{:02X} ".format(Byte)
             if RxSignatureCount > 0:
@@ -213,7 +247,7 @@ while ExitFlag == False:
          # Display the byte data in decimal format.
          LogEntry += "\n\nBYTE DATA:\n"
          DataCount = 0
-         for Byte in ByteData:
+         for Byte in AltByteData:
             LogEntry += "{:3d} ".format(Byte)
             DataCount += 1
             if DataCount % 19 == 0:
@@ -223,7 +257,7 @@ while ExitFlag == False:
          LogEntry += "\n\nWORD DATA OFFSET 0:\n"
          DataWord = 0
          DataCount = 0
-         for Byte in ByteData:
+         for Byte in AltByteData:
             if DataCount % 2 == 0:
                DataWord = Byte
             else:
@@ -238,7 +272,7 @@ while ExitFlag == False:
          LogEntry += "\n\nWORD DATA OFFSET 1:\n"
          DataWord = 0
          DataCount = 0
-         for Byte in ByteData:
+         for Byte in AltByteData:
             if DataCount % 2 == 1:
                DataWord = Byte
             else:
@@ -251,17 +285,17 @@ while ExitFlag == False:
 
          # Display the byte data in ASCII format.
          LogEntry += "\n\nCHARACTER DATA:\n"
-         for Byte in ByteData:
+         for Byte in AltByteData:
             LogEntry += "{:s}".format(chr(Byte))
 
       # Reset data ready to receive next RX data.
       LogEntry += "\n\n\n"
-      sys.stdout.flush()
 
       if BadDataFlag == False or (BadDataFlag == True and LOG_BAD_DATA == True):
          # Open a daily log file.
          LogFile = open("LOG/{:s}_433MHz.log".format(Now.strftime("%Y-%m-%d")), 'a', 0)
          WriteLogLine(LogFile, LogEntry)
+         sys.stdout.flush()
          LogFile.close()
 
       # Initialise a new data packet capture.
