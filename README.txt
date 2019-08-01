@@ -21,7 +21,7 @@ Reading Data Transmitted From A Car Keyfob At 433MHz With A Raspberry Pi
 Patreon, donations help produce more OpenSource projects:
 https://www.patreon.com/_DevelopIT
 
-Video of this project:
+Videos of this project:
 https://youtu.be/8B582TMMSNY
 
 Source Code on GitHub:
@@ -29,13 +29,30 @@ https://github.com/BirchJD/RPi_433MHz
 
 
 
-Application
-===========
-Start monitoring and logging data.
-./Pi433MHz.py
+Applications
+============
 
-Summary of transmittion signatures and number of occurancies.
+./Pi433MHz.py
+Start monitoring and logging data. To provide various views of the data being
+received, allowing analysis and identification of required data being 
+transmitted on 433MHz. Also provides a noise count, which indicates how much
+local RF interferance (RFI) is being experianced, which provides a method of
+locating the defice in a location with low interference noise, improving
+reception of data.
+
 ./LogSignatures.sh
+Summary of transmittion signatures and number of occurancies as an aid to 
+identifiying the required data being transmitted.
+
+./Pi433MHzRxMatch.py
+An example application which identifies specific data being transmitted and
+allows an application to be run depending on which of a series of matching
+data signatures is identified. Configuration data as a list of data
+signatures and commands to execute are placed in the file Pi433MHzRxMatch.ini.
+
+./Pi433MHzTx.py
+
+./Pi433MHzRx.py
 
 
 

@@ -20,6 +20,9 @@
 #/* Pi433MHz - 433MHz Data Reciever and Decoder.                             */
 #/* ------------------------------------------------------------------------ */
 #/* V1.00 - 2019-07-21 - Jason Birch                                         */
+#/* V1.01 - 2019-07-31 - Jason Birch                                         */
+#/*                      Tuned paramaters display noise count to assist      */
+#/*                      positioning of module away from RFI areas.          */
 #/* ------------------------------------------------------------------------ */
 #/* Script for monitoring a 433MHz and displaying packets of data received.  */
 #/****************************************************************************/
@@ -37,7 +40,7 @@ import RPi.GPIO
 
 # GPIO Pin connected to 433MHz receiver.
 GPIO_RX_PIN = 26
-# GPIO Pin connected to 433MHz transmitter (possible future experiments).
+# GPIO Pin connected to 433MHz transmitter.
 GPIO_TX_PIN = 19
 
 # Put bad data lines in log file.
@@ -46,9 +49,9 @@ LOG_BAD_DATA = False
 # When converting 5V signal to 3V3 signal for Raspberry Pi GPIO, NPN transistor inverts the signal.
 RX_BIT_INVERT = 1
 # Period of no RX data to consider end of RX data message.
-RX_END_PERIOD = 0.25
+RX_END_PERIOD = 0.01
 # Smallest period of high or low signal to consider noise rather than data, and flag as bad data. 
-RX_REJECT_PERIOD = 0.000025
+RX_REJECT_PERIOD = 0.000005
 # Ignore extra bits at start of transmission.
 RX_START_BITS = 1
 # RX Signature size, number of hex values to use as a signature.
@@ -96,6 +99,7 @@ def WriteLogLine(LogFile, LogLine):
 RPi.GPIO.setwarnings(False)
 RPi.GPIO.setmode(RPi.GPIO.BCM)
 RPi.GPIO.setup(GPIO_RX_PIN, RPi.GPIO.IN, pull_up_down=RPi.GPIO.PUD_UP)
+RPi.GPIO.setup(GPIO_TX_PIN, RPi.GPIO.OUT, initial=1)
 
 # Initialise a new data packet capture.
 ThisRxPacket = RxPacket
@@ -103,20 +107,32 @@ DataInit(ThisRxPacket)
 
 # Infinate loop for this application.
 ExitFlag = False
+NoiseCount = 0
+LastSecond = 0
 sys.stdout.write("\nWAITING FOR DATA...\n\n")
 sys.stdout.flush()
 while ExitFlag == False:
    # Check if data is currently being received.
    ThisPeriod = time.time()
    DiffPeriod = ThisPeriod - ThisRxPacket.BitPeriod
+   ThisSecond = int(ThisPeriod)
+   if ThisSecond != LastSecond:
+      sys.stdout.write(" NOISE: {:d}      \r".format(NoiseCount))
+      sys.stdout.flush()
+      NoiseCount = 0
+      LastSecond = ThisSecond
+
    if len(ThisRxPacket.Data) == 0 or DiffPeriod < RX_END_PERIOD:
       # If data level changes, log information about the data received, to be decoded when the RX data is complete.
       GpioLevel = RPi.GPIO.input(GPIO_RX_PIN)
       if GpioLevel != ThisRxPacket.LastGpioLevel:
-         ThisRxPacket.Data.append([ThisRxPacket.DataCount, GPIO_RX_PIN, ThisRxPacket.LastGpioLevel, DiffPeriod])
-         ThisRxPacket.DataCount += 1
-         ThisRxPacket.BitPeriod = ThisPeriod
-         ThisRxPacket.LastGpioLevel = GpioLevel
+         if DiffPeriod < RX_REJECT_PERIOD:
+            NoiseCount += 1
+         else:
+            ThisRxPacket.Data.append([ThisRxPacket.DataCount, GPIO_RX_PIN, ThisRxPacket.LastGpioLevel, DiffPeriod])
+            ThisRxPacket.DataCount += 1
+            ThisRxPacket.BitPeriod = ThisPeriod
+            ThisRxPacket.LastGpioLevel = GpioLevel
    else:
       # New log entry.
       LogEntry = ""
@@ -153,7 +169,7 @@ while ExitFlag == False:
       if MinLowPeriod == RX_END_PERIOD or MinHighPeriod == RX_END_PERIOD \
          or MinLowPeriod < RX_REJECT_PERIOD or MinHighPeriod < RX_REJECT_PERIOD:
          BadDataFlag = True
-         LogEntry += "! BAD DATA REJECTED !"
+         LogEntry += "! BAD DATA REJECTED (NOISY) !"
       else:
          # Data looks OK, so display the data in several formats to aid decoding of the data.
          # Display binary data and store groups of eight bits as byte data for use later.
@@ -223,6 +239,7 @@ while ExitFlag == False:
          # Flag all zero data as bad data.
          if ZeroTest == 0:
             BadDataFlag = True
+            LogEntry += "! BAD DATA REJECTED (ZERO) !"
 
          # Received data decoded from single bit run = 0, double bit run = 1.
          LogEntry += "\n\nALT HEX DATA:\n"
@@ -240,9 +257,14 @@ while ExitFlag == False:
             if DataCount % 26 == 0:
                LogEntry += "\n"
          LogEntry += "\n\nRX SIGNATURE: {:s}".format(RxSignature)
+         # Flag bad signiture data as bad data.
+         if RxSignatureCount > 0:
+            BadDataFlag = True
+            LogEntry += "! BAD DATA REJECTED (SIGNATURE) !"
          # Flag all zero data as bad data.
          if ZeroTest == 0:
             BadDataFlag = True
+            LogEntry += "! BAD DATA REJECTED (ZERO) !"
 
          # Display the byte data in decimal format.
          LogEntry += "\n\nBYTE DATA:\n"
@@ -290,6 +312,9 @@ while ExitFlag == False:
 
       # Reset data ready to receive next RX data.
       LogEntry += "\n\n\n"
+
+      if BadDataFlag == True:
+         NoiseCount += 1
 
       if BadDataFlag == False or (BadDataFlag == True and LOG_BAD_DATA == True):
          # Open a daily log file.
