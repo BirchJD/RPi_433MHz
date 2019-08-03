@@ -42,6 +42,8 @@ GPIO_RX_PIN = 26
 # GPIO Pin connected to 433MHz transmitter.
 GPIO_TX_PIN = 19
 
+# GPIO level to switch transmitter off.
+TX_OFF_LEVEL = 1
 # Period of no RX data to consider end of RX data message.
 RX_END_PERIOD = 0.01
 # Smallest period of high or low signal to consider noise rather than data, and flag as bad data. 
@@ -79,7 +81,7 @@ def LoadConfig():
 RPi.GPIO.setwarnings(False)
 RPi.GPIO.setmode(RPi.GPIO.BCM)
 RPi.GPIO.setup(GPIO_RX_PIN, RPi.GPIO.IN, pull_up_down=RPi.GPIO.PUD_UP)
-RPi.GPIO.setup(GPIO_TX_PIN, RPi.GPIO.OUT, initial=1)
+RPi.GPIO.setup(GPIO_TX_PIN, RPi.GPIO.OUT, initial=TX_OFF_LEVEL)
 
 
 # Initialise data.
@@ -162,6 +164,7 @@ while ExitFlag == False:
             sys.stdout.write("\n\n")
             sys.stdout.flush()
          elif LOG_NO_MATCH == True:
+            Now = datetime.datetime.now()
             sys.stdout.write(Now.strftime("%Y-%m-%d %H:%M:%S\n"))
             sys.stdout.write("NO MATCH: " + str(ConfigElement) + "\n")
             sys.stdout.write("START BIT PERIOD {:f}\n".format(StartBitPeriod))

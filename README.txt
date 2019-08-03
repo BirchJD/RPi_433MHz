@@ -15,7 +15,7 @@
 
 
 
-Reading Data Transmitted From A Car Keyfob At 433MHz With A Raspberry Pi
+Reading Data Transmitted From A Car Key-fob At 433MHz With A Raspberry Pi
 
 
 Patreon, donations help produce more OpenSource projects:
@@ -34,15 +34,16 @@ Applications
 
 ./Pi433MHz.py
 Start monitoring and logging data. To provide various views of the data being
-received, allowing analysis and identification of required data being 
-transmitted on 433MHz. Also provides a noise count, which indicates how much
-local RF interferance (RFI) is being experianced, which provides a method of
-locating the defice in a location with low interference noise, improving
-reception of data.
+received. Allowing analysis and identification of required data transmitted
+on 433MHz. Also provides a noise count, which indicates how much local RF
+interference (RFI) is being experienced, providing a method of locating the
+device in a location with low interference noise, improving reliability of
+data reception.
 
 ./LogSignatures.sh
-Summary of transmittion signatures and number of occurancies as an aid to 
-identifiying the required data being transmitted.
+Summary of transmitted signatures received and logged with the Pi433MHz.py
+application. Along with the number of occurrences, as an aid to identifying
+required data being received.
 
 ./Pi433MHzRxMatch.py
 An example application which identifies specific data being transmitted and
@@ -51,13 +52,25 @@ data signatures is identified. Configuration data as a list of data
 signatures and commands to execute are placed in the file Pi433MHzRxMatch.ini.
 
 ./Pi433MHzTx.py
+An example application to take an ASCII string as a command line argument,
+which will then be transmitted over 433MHz as part of a data package. The
+data package allows the data to be checked for validity on reception in case of
+transmission/reception corruption. Demonstrates a basic encryption of the data
+on transmission. The Pi433MHz.py application can be used to receive and display
+the encrypted data packet. And the Pi433MHzRx.py application can be used to
+receive and display the unencrypted data.
+e.g.
+./Pi433MHzTx.py 'Sending test message.'
 
 ./Pi433MHzRx.py
+An example application to receive validate, unencrypt and display a packet of
+data transmitted from the Pi433MHzTx.py application.
 
 
 
 Aerial
 ======
-12 Turns spaced to 15mm of 0.315mm enamelled copper wire.
+17cm wound at 5mm diameter spaced to 20mm of 0.5mm enamelled copper wire.
+With center ground wire through the coil.
 
 

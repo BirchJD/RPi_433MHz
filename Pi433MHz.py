@@ -46,6 +46,8 @@ GPIO_TX_PIN = 19
 # Put bad data lines in log file.
 LOG_BAD_DATA = False
 
+# GPIO level to switch transmitter off.
+TX_OFF_LEVEL = 1
 # When converting 5V signal to 3V3 signal for Raspberry Pi GPIO, NPN transistor inverts the signal.
 RX_BIT_INVERT = 1
 # Period of no RX data to consider end of RX data message.
@@ -99,7 +101,7 @@ def WriteLogLine(LogFile, LogLine):
 RPi.GPIO.setwarnings(False)
 RPi.GPIO.setmode(RPi.GPIO.BCM)
 RPi.GPIO.setup(GPIO_RX_PIN, RPi.GPIO.IN, pull_up_down=RPi.GPIO.PUD_UP)
-RPi.GPIO.setup(GPIO_TX_PIN, RPi.GPIO.OUT, initial=1)
+RPi.GPIO.setup(GPIO_TX_PIN, RPi.GPIO.OUT, initial=TX_OFF_LEVEL)
 
 # Initialise a new data packet capture.
 ThisRxPacket = RxPacket
